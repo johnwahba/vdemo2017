@@ -12,6 +12,7 @@ defmodule Vdemo2017.Application do
       supervisor(Vdemo2017.Repo, []),
       # Start the endpoint when the application starts
       supervisor(Vdemo2017Web.Endpoint, []),
+      supervisor(Vdemo2017.VideoStreamer, []),
       # Start your own worker by calling: Vdemo2017.Worker.start_link(arg1, arg2, arg3)
       # worker(Vdemo2017.Worker, [arg1, arg2, arg3]),
     ]

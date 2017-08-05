@@ -18,3 +18,8 @@ Ready to run in production? Please [check our deployment guides](http://www.phoe
   * Docs: https://hexdocs.pm/phoenix
   * Mailing list: http://groups.google.com/group/phoenix-talk
   * Source: https://github.com/phoenixframework/phoenix
+
+
+Generate 1 second file chunks with:  
+`fmpeg -i big_buck_bunny_1080p_h264.mp4 -c copy -map 0 -segment_time 1 -f segment media/bunny%04d.ts
+`
