@@ -5,7 +5,7 @@ defmodule Vdemo2017.Mixfile do
     [
       app: :vdemo2017,
       version: "0.0.1",
-      elixir: "~> 1.4",
+      elixir: "~> 1.5.0",
       elixirc_paths: elixirc_paths(Mix.env),
       compilers: [:phoenix, :gettext] ++ Mix.compilers,
       start_permanent: Mix.env == :prod,
@@ -42,6 +42,7 @@ defmodule Vdemo2017.Mixfile do
       {:gettext, "~> 0.11"},
       {:cowboy, "~> 1.0"},
       {:porcelain, "~> 2.0"},
+      {:gen_stage, "~> 0.12"},
     ]
   end
 
