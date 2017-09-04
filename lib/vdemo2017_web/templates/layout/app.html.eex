@@ -9,7 +9,7 @@
     <title>Elixirconf 2017</title>
 
 		<link rel="stylesheet" href="reveal/css/reveal.css">
-		<link rel="stylesheet" href="reveal/css/theme/black.css">
+		<link rel="stylesheet" href="reveal/css/theme/league.css">
 
 		<!-- Theme used for syntax highlighting of code -->
 		<link rel="stylesheet" href="reveal/lib/css/zenburn.css">
