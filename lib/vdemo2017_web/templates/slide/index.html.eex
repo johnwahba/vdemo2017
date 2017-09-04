@@ -1,0 +1,159 @@
+<div class="reveal">
+	<div class="slides">
+		<section>
+      <h2>
+        Streaming Video in Elixir
+      </h2>
+    </section>
+    <section data-markdown>
+      <textarea data-template>
+### Who am I?
+<img src="images/portrait.jpg" height="200" width="200">
+- Software Engineer at Twitch
+- Member of the Ruby diaspora
+- Video Nerd
+        </textarea>
+    </section>
+    <section data-markdown>
+      <textarea data-template>
+### Outline
+- FFMPEG
+- Elixir and Shell
+- Building a Transcoding Pipeline
+- Streaming Video
+        </textarea>
+    </section>
+
+	<section>
+	  <section data-markdown>
+	    <textarea data-template>
+### FFMPEG
+A complete, cross-platform solution to record, convert and stream audio and video.
+
+    (Source: https://ffmpeg.org/)
+    - License depends on your compile flags
+	    </textarea>
+	  </section>
+	  <section>
+	    <h3>FFMPEG is amazing</h3>
+	  	<pre><code data-trim data-noescape>
+	      ffmpeg -i any_video.mov another_video.mp4
+	  	</code></pre>
+	  </section>
+	  <section>
+	    <h3>FFMPEG is very amazing</h3>
+	  	<pre><code data-trim data-noescape>
+	      ffmpeg -i any_video.mov -f ts - | ffplay -
+	  	</code></pre>
+	  </section>
+	  <section data-markdown>
+	  <textarea data-template>
+### How to make an interactive stream over a video
+- Transcode video to adjust keyframes
+- Chunk video to every second
+- Apply filters to video
+- Stream video to your favorite service provider
+	    </textarea>
+	  </section>
+	  <section>
+	    <h3>Transcoding</h3>
+	    <pre><code data-trim data-noescape>
+	    ffmpeg
+	      -i big_buck_bunny_1080p_h264.mp4
+	      -vcodec libx264
+	      <mark>-x264opts "keyint=30:min-keyint=30:scenecut=-1"</mark>
+	      -acodec copy
+	      transcoded_bunny.mp4
+	  </code></pre>
+	  </section>
+	  <section>
+	    <h3>Chunk video</h3>
+	    <pre><code data-trim data-noescape>
+	    ffmpeg
+	      -i transcoded_bunny.mp4
+	      -c copy
+	      -map 0
+	      -f segment
+	      -segment_time 1
+	      -vcodec copy
+	      media/bunny%03d.ts
+	  </code></pre>
+	  </section>
+	  <section>
+	    <h3>How to stream</h3>
+	    <pre><code data-trim data-noescape>
+	    ffmpeg
+	      -i -
+	      -f flv "rtmp://rtmp_server_address.domain/stream_key"
+	  </code></pre>
+	  </section>
+	</section>
+
+
+	<section>
+		<section data-markdown>
+			<textarea data-template>
+### Elixir and Shell
+<pre><code data-trim data-noescape>:os.cmd('echo hello')</code></pre>
+<pre><code data-trim data-noescape>:erlang.ports()</code></pre>
+<pre><code data-trim data-noescape>Porcelain.shell()</code></pre>
+			</textarea>
+		</section>
+		<section data-markdown>
+			<textarea data-template>
+### :os.cmd()
+- Pros:
+	- Works (TM)
+- Cons:
+	- STDOUT only
+	- String output
+	- No Streaming support
+			</textarea>
+		</section>
+		<section data-markdown>
+			<textarea data-template>
+### :erlang.ports()
+- Pros:
+	- Process.send() interface plays well with OTP
+	- Supports stderr output (critical for ffmpeg logs)
+- Cons:
+	- Does not send os signals to external processes
+			</textarea>
+		</section>
+		<section data-markdown>
+			<textarea data-template>
+### Porcelain.shell()
+- Pros:
+	- Built on top of ports
+	- Flexible output formats
+		- Stream
+		- String
+		- Append to File
+- Cons:
+	- Requires go dependency for some of the features
+	- Some instability when reading from both stderr and stdout at the same time.
+			</textarea>
+		</section>
+		<section >
+			<h3>Porcelain options</h3>
+			<table>
+				<tr>
+					<td></td>
+					<td>sync</td>
+					<td>async</td>
+				</tr>
+				<tr>
+					<td>string</td>
+					<td>Porcelain.shell()</td>
+					<td>Porcelain.spawn_shell()</td>
+				</tr>
+				<tr>
+					<td>cmd+args</td>
+					<td>Porcelain.exec()</td>
+					<td>Porcelain.spawn()</td>
+				</tr>
+			</table>
+		</section>
+	</section>
+	</div>
+</div>
