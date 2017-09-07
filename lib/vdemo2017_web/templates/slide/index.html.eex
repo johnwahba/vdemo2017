@@ -163,6 +163,13 @@ A complete, cross-platform solution to record, convert and stream audio and vide
       <h3>Transcoding Video in Elixir</h3>
     </section>
     <section data-markdown>
+	  <section>
+	  <textarea data-template>
+### MPEGTS
+- Well understood binary format
+- 188 byte size
+	    </textarea>
+	  </section>
 	  <textarea data-template>
 ### Transcoding video
 - Transcode step helps reduce work done at stream time
@@ -364,7 +371,6 @@ A complete, cross-platform solution to record, convert and stream audio and vide
               opts)
           end
         </code></pre>
-        <iframe width="0" height="0" border="0" name="dummyframe" id="dummyframe"></iframe>
         <form action="/start_stream" method="post" target="dummyframe">
           <input type="submit" value="Start Stream!">
         </form>
@@ -374,6 +380,7 @@ A complete, cross-platform solution to record, convert and stream audio and vide
         <form action="/vote/nay" method="post" target="dummyframe">
           <input type="submit" value="Vote Nay!">
         </form>
+        <iframe width="0" height="0" border="0" name="dummyframe" id="dummyframe"></iframe>
       </section>
     </section>
   </section>

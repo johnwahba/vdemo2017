@@ -43,6 +43,7 @@ defmodule Vdemo2017.Mixfile do
       {:cowboy, "~> 1.0"},
       {:porcelain, "~> 2.0"},
       {:gen_stage, "~> 0.12"},
+      {:flow, "~> 0.12"}
     ]
   end
 
