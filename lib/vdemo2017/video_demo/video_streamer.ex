@@ -1,19 +1,33 @@
 defmodule Vdemo2017.VideoStreamer do
   use GenServer
   def start_link(dir \\ "chunk/**/*.ts") do
-    GenServer.start_link(__MODULE__, Path.wildcard(dir))
+    GenServer.start_link(__MODULE__, Path.wildcard(dir), name: __MODULE__)
   end
   def init(dir) do
-    start_stream(dir)
     {:ok, dir}
+  end
+
+  def start() do
+    GenServer.call(__MODULE__, :start)
+  end
+
+  def handle_call(:start, _from, dir) do
+    blocking_start_stream(dir)
+    {:reply, :ok, dir}
   end
 
   def start_stream(dir) do
     dir
     |> Stream.map(&read_bytes/1)
+    |> Task.async_stream(&apply_filter/1, concurrency: 1, ordered: true, timeout: 5_000_000)
+    |> Stream.flat_map(fn({:ok, bytes}) -> bytes end)
+    |> play
+  end
+
+  def blocking_start_stream(dir) do
+    dir
+    |> Stream.map(&read_bytes/1)
     |> Stream.flat_map(&apply_filter/1)
-    # |> Task.async_stream(&apply_filter/1, concurrency: 3, ordered: true, timeout: 5_000_000)
-    # |> Stream.flat_map(fn({:ok, bytes}) -> bytes end)
     |> play
   end
 
@@ -24,7 +38,6 @@ defmodule Vdemo2017.VideoStreamer do
   end
 
   def apply_filter(bytes) do
-    # :timer.sleep(1000)
     opts = [in: bytes, out: :stream]
     %{"yay" => yays, "nay" => nays} = Vdemo2017.Voter.get_results()
     %{out: out} = Porcelain.spawn("ffmpeg", [
@@ -42,6 +55,6 @@ defmodule Vdemo2017.VideoStreamer do
 
   def play(bytes) do
     opts = [in: bytes]
-    Porcelain.spawn_shell("ffmpeg -i - -acodec copy -f mpegts -b 12000k  - | ffplay -", opts)
+    Porcelain.spawn_shell("ffmpeg -i - -acodec copy -f mpegts -b 12000k  - | ffplay - -x 1080 -y 720", opts)
   end
 end

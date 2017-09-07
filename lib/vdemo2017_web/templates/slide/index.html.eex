@@ -12,6 +12,8 @@
 - Software Engineer at Twitch
 - Member of the Ruby diaspora
 - Video Nerd
+- twitter: https://twitter.com/johnawahba
+- github: https://github.com/johnwahba
         </textarea>
     </section>
     <section data-markdown>
@@ -155,5 +157,240 @@ A complete, cross-platform solution to record, convert and stream audio and vide
 			</table>
 		</section>
 	</section>
+
+  <section>
+    <section>
+      <h3>Transcoding Video in Elixir</h3>
+    </section>
+    <section data-markdown>
+	  <textarea data-template>
+### Transcoding video
+- Transcode step helps reduce work done at stream time
+- Producer -> ConsumerSupervisor -> Transcoder
+
+- GenStage makes the code super clean
+	    </textarea>
+	  </section>
+    <section>
+      <h3>Vdemo2017.TranscoderProducer</h3>
+      <pre class="stretch"><code data-trim data-noescape>
+        defmodule Vdemo2017.TranscoderProducer do
+          use GenStage
+          defstruct [buffered_demand: 1, dir: nil, timer: nil]
+          @heart_beat_timeout 10
+
+          def start_link(dir \\ "jobs/**/*") do
+            GenStage.start_link(
+              __MODULE__,
+              %__MODULE__{dir: dir},
+              name: __MODULE__
+            )
+          end
+
+          def init(state) do
+            timer = :timer.send_interval(1000, self(), :check_demand)
+            {:producer, %{state | timer: timer}}
+          end
+          # ...
+      </code></pre>
+    </section>
+    <section>
+      <pre class="stretch"><code data-trim data-noescape>
+          # ...
+          def handle_info(:check_demand, state) do
+            handle_demand(0, state)
+          end
+
+          def handle_demand(demand, %__MODULE__{
+              dir: dir,
+              buffered_demand: buffered_demand
+            } = transcoder) when demand + buffered_demand > 0 do
+            total_demand = demand + buffered_demand
+            {:ok, {jobs, count}} = get_jobs(dir, total_demand)
+            {:noreply, jobs,
+              %{transcoder | buffered_demand: total_demand - count}}
+          end
+
+          def handle_demand(_demand, transcoder) do
+            {:noreply, [], transcoder}
+          end
+          # ...
+      </code></pre>
+    </section>
+    <section>
+      <pre class="stretch"><code data-trim data-noescape>
+          # ...
+          defp get_jobs(dir, demand) do
+            dir
+            |> Path.wildcard
+            |> Enum.reject(&is_meta_file?/1)
+            |> Enum.reject(&locked?/1)
+            |> Enum.reject(&done?/1)
+            |> Enum.take(demand)
+            |> Enum.map(&take_lock/1)
+            |> case do
+              files -> {:ok, {files, length(files)}}
+            end
+          end
+        end
+      </code></pre>
+    </section>
+    <section>
+      <h3>Vdemo2017.TranscoderConsumer</h3>
+      <pre class="stretch"><code data-trim data-noescape>
+        defmodule Vdemo2017.TranscoderConsumer do
+          use ConsumerSupervisor
+
+          def start_link() do
+            ConsumerSupervisor.start_link(__MODULE__, :ok)
+          end
+
+          def init(:ok) do
+            children = [worker(Vdemo2017.Transcoder, [], restart: :temporary)]
+            {:ok,
+              children,
+              strategy: :one_for_one,
+              subscribe_to: [{Vdemo2017.TranscoderProducer, max_demand: 2}]}
+          end
+        end
+      </code></pre>
+    </section>
+    <section>
+      <h3>Vdemo2017.Transcoder</h3>
+      <pre class="stretch"><code data-trim data-noescape>
+        defmodule Vdemo2017.Transcoder do
+          use Task
+          @heartbeat 5_000
+
+          def start_link({file, lock}) do
+            Task.start_link(fn ->
+              keep_lock_while_alive(self(), lock, @heartbeat)
+              file
+              |> transcode()
+              |> chunk()
+              done({file, lock})
+            end)
+          end
+
+          def keep_lock_while_alive(pid, lock, heartbeat) do
+            if Process.alive?(pid) do
+              :ok = File.touch!(lock)
+              :timer.apply_after(heartbeat, __MODULE__, :keep_lock_while_alive, [pid, lock, heartbeat])
+            end
+          end
+      </code></pre>
+    </section>
+    <section>
+      <pre class="stretch"><code data-trim data-noescape>
+        def transcode(file) do
+          transcode_path = transcode_path(file)
+          :filelib.ensure_dir(transcode_path)
+          %{status: 0} = Porcelain.exec("ffmpeg", [
+            "-i", file,
+            "-vcodec", "libx264",
+            "-x264opts", "keyint=30:min-keyint=30:scenecut=-1",
+            "-acodec", "copy", transcode_path], err: :out)
+          transcode_path
+        end
+
+        def chunk(file) do
+          chunk_path = chunk_path(file)
+          :filelib.ensure_dir(chunk_path)
+          %{status: 0} = Porcelain.exec("ffmpeg", [
+            "-i", file,
+            "-c", "copy",
+            "-map", "0",
+            "-f", "segment",
+            "-segment_time", "1",
+            "-vcodec", "copy", chunk_path])
+          chunk_path
+        end
+      </code></pre>
+    </section>
+  </section>
+
+  <section>
+    <section data-markdown>
+      <textarea data-template>
+### Streaming video
+- Streaming
+- Applying filters
+- Making it parallel
+      </textarea>
+    </section>
+      <section>
+        <pre class="stretch"><code data-trim data-noescape>
+          def blocking_start_stream(dir) do
+            dir
+            |> Stream.map(&read_bytes/1)
+            <mark>|> Stream.flat_map(&apply_filter/1)</mark>
+            |> play
+          end
+
+          def read_bytes(file), do: file |> File.read!() |> List.wrap()
+
+          def apply_filter(bytes) do
+            opts = [in: bytes, out: :stream]
+            %{"yay" => yays, "nay" => nays} = Vdemo2017.Voter.get_results()
+            %{out: out} = Porcelain.spawn("ffmpeg", [
+            "-i", "-",
+            "-f", "mpegts",
+            "-vf", "drawtext='fontfile=/Library/Fonts/Arial\ Bold.ttf: \
+            text=\'yays-#{yays} nays-#{nays} t-#{:os.system_time(:seconds)}\': \
+            fontcolor=white: fontsize=72: box=1: boxcolor=black@0.5: \
+            boxborderw=5: x=(w-text_w)/2: y=(h-text_h)'",
+            "-"], opts)
+            out
+          end
+        </code></pre>
+      </section>
+    <section>
+      <section>
+        <h3>How to use filters</h3>
+        <pre><code data-trim data-noescape>
+          def start_stream(dir) do
+            dir
+            |> Stream.map(&read_bytes/1)
+            |> Task.async_stream(&apply_filter/1,
+              concurrency: 2, ordered: true, timeout: 5_000_000)
+            |> Stream.flat_map(fn({:ok, bytes}) -> bytes end)
+            |> play
+          end
+
+          def play(bytes) do
+            opts = [in: bytes]
+            Porcelain.spawn_shell(
+              "ffmpeg -i - -acodec copy -f mpegts -b 12000k - | ffplay -",
+              opts)
+          end
+        </code></pre>
+        <iframe width="0" height="0" border="0" name="dummyframe" id="dummyframe"></iframe>
+        <form action="/start_stream" method="post" target="dummyframe">
+          <input type="submit" value="Start Stream!">
+        </form>
+        <form action="/vote/yay" method="post" target="dummyframe">
+          <input type="submit" value="Vote Yay!">
+        </form>
+        <form action="/vote/nay" method="post" target="dummyframe">
+          <input type="submit" value="Vote Nay!">
+        </form>
+      </section>
+    </section>
+  </section>
+
+  <section data-markdown>
+    <textarea data-template>
+      ### Wishlist
+      - Porcelain supporting high volume writes to stdout and stderr
+      - Genstage supporting ordered output
+      - Transcoding video without turning my computer into a jet engine
+      - Better Docker support for GPUs
+    </textarea>
+  </section>
+
+  <section>
+    <h3>Thanks</h3>
+    Project: <a href="https://github.com/johnwahba/vdemo2017">https://github.com/johnwahba/vdemo2017</a>
+  </section>
 	</div>
 </div>
