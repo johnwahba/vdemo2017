@@ -12,20 +12,29 @@
 - Software Engineer at Twitch
 - Member of the Ruby diaspora
 - Video Nerd
-- twitter: https://twitter.com/johnawahba
-- github: https://github.com/johnwahba
         </textarea>
     </section>
     <section data-markdown>
       <textarea data-template>
 ### Outline
+- Why Do this?
 - FFMPEG
 - Elixir and Shell
 - Building a Transcoding Pipeline
 - Streaming Video
         </textarea>
     </section>
-
+    <section data-markdown>
+      <textarea data-template>
+### Why do this?
+- Building interactive video streams is fun
+- Examples:
+  - Twitch Plays Pokemon (twitch.tv/twitchplayspokemon)
+  - Stock Stream (twitch.tv/stockstream)
+- Our Example:
+  - Voting
+        </textarea>
+    </section>
 	<section>
 	  <section data-markdown>
 	    <textarea data-template>
@@ -346,6 +355,34 @@ A complete, cross-platform solution to record, convert and stream audio and vide
       </section>
     <section>
       <section>
+        <h3>Voter</h3>
+        <pre class="stretch"><code data-trim data-noescape>
+        defmodule Vdemo2017.Voter do
+          use GenServer
+
+          def start_link(dir \\ "media/*") do
+            GenServer.start_link(__MODULE__, :ok, name: __MODULE__)
+          end
+          def init(:ok), do: {:ok, %{"yay" => 0, "nay" => 0}}
+
+          def get_results, do: GenServer.call(__MODULE__, :get_results)
+
+          def vote(vote), do: GenServer.cast(__MODULE__, {:vote, vote})
+
+          def handle_call(:get_results, _from, state) do
+            {:reply, state, state}
+          end
+
+          def handle_cast({:vote, vote}, state) do
+            state = update_in(state[vote], &(&1 + 1))
+            {:noreply, state}
+          end
+        end
+      </code></pre>
+      </section>
+    </section>
+
+      <section>
         <h3>How to use filters</h3>
         <pre><code data-trim data-noescape>
           def start_stream(dir) do
@@ -391,6 +428,10 @@ A complete, cross-platform solution to record, convert and stream audio and vide
   <section>
     <h3>Thanks</h3>
     Project: <a href="https://github.com/johnwahba/vdemo2017">https://github.com/johnwahba/vdemo2017</a>
+    <br>
+    Twitter: https://twitter.com/johnawahba
+    <br>
+    Github: https://github.com/johnwahba
   </section>
 	</div>
 </div>
